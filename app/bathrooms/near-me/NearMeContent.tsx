@@ -7,6 +7,7 @@ import { PlaceCard } from "@/components/PlaceCard";
 import { FALLBACK_PLACES } from "@/lib/seed-data";
 import type { PlaceWithScore } from "@/lib/types";
 
+const SITE_NAME = "Shittter";
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
 
 export function NearMeContent() {

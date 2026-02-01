@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: "Shittter — Find a bathroom you can trust",
   description: "Crowdsourced, anonymous, honest.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export const viewport: Viewport = {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { MapWithMarkers } from "@/components/MapWithMarkers";
 import { PlaceCard } from "@/components/PlaceCard";
@@ -8,30 +9,17 @@ import type { PlaceWithScore } from "@/lib/types";
 
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
 
-// Logo component with poop emoji and crown
 function Logo() {
   return (
-    <div className="flex items-center justify-center gap-2">
-      <div className="relative">
-        <svg viewBox="0 0 64 64" className="w-14 h-14">
-          {/* Crown */}
-          <path d="M18 8 L22 18 L32 10 L42 18 L46 8 L46 22 L18 22 Z" fill="#d4a853" />
-          <circle cx="22" cy="13" r="2" fill="#c9a227" />
-          <circle cx="32" cy="8" r="2.5" fill="#c9a227" />
-          <circle cx="42" cy="13" r="2" fill="#c9a227" />
-          {/* Poop body */}
-          <ellipse cx="32" cy="44" rx="18" ry="14" fill="#4a90a4" />
-          <ellipse cx="32" cy="34" rx="14" ry="10" fill="#5aa0b4" />
-          <ellipse cx="32" cy="26" rx="10" ry="7" fill="#6ab0c4" />
-          {/* Happy eyes */}
-          <ellipse cx="26" cy="36" rx="3" ry="4" fill="white" />
-          <ellipse cx="38" cy="36" rx="3" ry="4" fill="white" />
-          <circle cx="26" cy="37" r="2" fill="#333" />
-          <circle cx="38" cy="37" r="2" fill="#333" />
-          {/* Big smile */}
-          <path d="M24 46 Q32 54 40 46" stroke="#333" strokeWidth="2" fill="none" strokeLinecap="round" />
-        </svg>
-      </div>
+    <div className="flex items-center justify-center gap-2 shrink-0">
+      <Image
+        src="/logo.png"
+        alt="Shittter"
+        width={48}
+        height={48}
+        className="object-contain w-12 h-12"
+        priority
+      />
       <h1 className="text-4xl font-bold text-slate-700 tracking-tight">Shittter</h1>
     </div>
   );
