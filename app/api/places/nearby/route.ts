@@ -4,6 +4,12 @@ import { nearbyQuerySchema } from "@/lib/schemas";
 import type { PlaceWithScore } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { error: "DATABASE_URL is not set. Add it in Vercel Environment Variables." },
+      { status: 503 }
+    );
+  }
   const { searchParams } = new URL(request.url);
   const parsed = nearbyQuerySchema.safeParse({
     lat: searchParams.get("lat"),
@@ -21,10 +27,23 @@ export async function GET(request: NextRequest) {
   }
   const { lat, lng, radius, minScore, hasLock, hasTp } = parsed.data;
 
-  const rows = await sql`
-    select * from get_places_nearby(${lat}, ${lng}, ${radius}, ${minScore ?? null})
-  `;
-  let results: PlaceWithScore[] = (rows as Record<string, unknown>[]).map((r) => ({
+  let rows: Record<string, unknown>[];
+  try {
+    rows = (await sql`
+      select * from get_places_nearby(${lat}, ${lng}, ${radius}, ${minScore ?? null})
+    `) as Record<string, unknown>[];
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown database error";
+    console.error("places/nearby DB error:", err);
+    return NextResponse.json(
+      {
+        error: "Database error. Check DATABASE_URL and that migrations have been run.",
+        detail: message,
+      },
+      { status: 503 }
+    );
+  }
+  let results: PlaceWithScore[] = rows.map((r) => ({
     id: r.id as string,
     name: r.name as string,
     address: r.address as string | null,

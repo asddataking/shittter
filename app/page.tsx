@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { MapWithMarkers } from "@/components/MapWithMarkers";
 import { PlaceCard } from "@/components/PlaceCard";
+import { FALLBACK_PLACES } from "@/lib/seed-data";
 import type { PlaceWithScore } from "@/lib/types";
 
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
@@ -64,6 +65,7 @@ export default function Home() {
   const [places, setPlaces] = useState<PlaceWithScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMap, setShowMap] = useState(false);
   const [filters, setFilters] = useState({
@@ -86,13 +88,25 @@ export default function Home() {
     if (filters.hasTp) params.set("hasTp", "true");
     if (filters.fiveStarOnly) params.set("minScore", "80");
     setLoading(true);
+    setApiError(null);
     try {
       const res = await fetch(`/api/places/nearby?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setPlaces(data);
+      if (res.ok && Array.isArray(data)) {
+        setPlaces(data.length > 0 ? data : FALLBACK_PLACES);
+        if (data.length === 0) setApiError("Showing sample places. Connect your database to see your seeded bathrooms.");
+      } else {
+        setPlaces(FALLBACK_PLACES);
+        const msg = res.status === 503 && data?.error
+          ? data.detail
+            ? `Database error: ${data.detail}`
+            : "Database not connected or migrations not run. Add DATABASE_URL in Vercel and run migrations."
+          : "Could not load places. Showing sample list.";
+        setApiError(msg);
+      }
     } catch {
-      setPlaces([]);
+      setPlaces(FALLBACK_PLACES);
+      setApiError("Could not reach the server. Showing sample places.");
     } finally {
       setLoading(false);
     }
@@ -138,6 +152,11 @@ export default function Home() {
         {geoError && (
           <p className="mt-2 text-sm text-amber-600 bg-amber-50 inline-block px-3 py-1 rounded-full">
             {geoError}
+          </p>
+        )}
+        {apiError && (
+          <p className="mt-2 text-sm text-sky-700 bg-sky-50 inline-block px-3 py-1 rounded-full max-w-md">
+            {apiError}
           </p>
         )}
       </header>

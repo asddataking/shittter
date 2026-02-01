@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-
-const SEED_PLACES = [
-  { name: "Urban Grind Coffee", address: "123 Main St", lat: 37.7749, lng: -122.4194 },
-  { name: "Target", address: "456 Market St", lat: 37.7849, lng: -122.4094 },
-  { name: "24Hr Gas & Go", address: "789 Oak Ave", lat: 37.7649, lng: -122.4294 },
-];
+import { SEED_PLACES } from "@/lib/seed-data";
 
 export async function POST(request: NextRequest) {
   let body: { secret?: string } = {};
