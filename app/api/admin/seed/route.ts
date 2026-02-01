@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 
 const SEED_PLACES = [
   { name: "Urban Grind Coffee", address: "123 Main St", lat: 37.7749, lng: -122.4194 },
@@ -23,16 +23,14 @@ export async function POST(request: NextRequest) {
   if (secret !== process.env.ADMIN_SEED_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const inserted: string[] = [];
+  let inserted = 0;
   for (const p of SEED_PLACES) {
-    const { data: id, error } = await supabaseServer.rpc("insert_place", {
-      p_name: p.name,
-      p_address: p.address,
-      p_lat: p.lat,
-      p_lng: p.lng,
-      p_google_place_id: null,
-    });
-    if (!error && id) inserted.push(id as string);
+    try {
+      await sql`select insert_place(${p.name}, ${p.address}, ${p.lat}, ${p.lng}, null)`;
+      inserted++;
+    } catch {
+      // skip
+    }
   }
-  return NextResponse.json({ success: true, inserted: inserted.length });
+  return NextResponse.json({ success: true, inserted });
 }

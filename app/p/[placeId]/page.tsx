@@ -2,26 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TrustScoreBadge } from "@/components/TrustScoreBadge";
 import { PlaceDetailSignals } from "@/components/PlaceDetailSignals";
-import { supabaseServer } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import type { PlaceDetailResponse } from "@/lib/types";
 
 async function getPlace(id: string): Promise<PlaceDetailResponse | null> {
-  const [placeRes, scoreRes, reportsRes] = await Promise.all([
-    supabaseServer.from("places").select("*").eq("id", id).single(),
-    supabaseServer.from("place_scores").select("*").eq("place_id", id).single(),
-    supabaseServer
-      .from("reports")
-      .select("*")
-      .eq("place_id", id)
-      .eq("ai_status", "approved")
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
-  if (placeRes.error || !placeRes.data) return null;
+  const [placeRow] = await sql`select * from places where id = ${id}`;
+  if (!placeRow) return null;
+  const [scoreRow] = await sql`select * from place_scores where place_id = ${id}`;
+  const reportsRows = await sql`
+    select * from reports where place_id = ${id} and ai_status = 'approved'
+    order by created_at desc limit 10
+  `;
   return {
-    place: placeRes.data as PlaceDetailResponse["place"],
-    score: scoreRes.data as PlaceDetailResponse["score"],
-    reports: (reportsRes.data ?? []) as PlaceDetailResponse["reports"],
+    place: placeRow as PlaceDetailResponse["place"],
+    score: (scoreRow as PlaceDetailResponse["score"]) ?? null,
+    reports: (reportsRows ?? []) as PlaceDetailResponse["reports"],
   };
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { reportSubmitSchema } from "@/lib/schemas";
 import { getDeviceHash } from "@/lib/device-hash";
 import { checkReportRateLimit } from "@/lib/rate-limit";
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") ?? "";
   const deviceHash = getDeviceHash(ip, userAgent);
 
-  const rate = await checkReportRateLimit(supabaseServer, deviceHash);
+  const rate = await checkReportRateLimit(deviceHash);
   if (!rate.allowed) {
     return NextResponse.json(
       { error: "Too many reports. Try again later." },
@@ -36,63 +36,41 @@ export async function POST(request: NextRequest) {
 
   let placeId: string;
   if (data.placeId) {
-    const { data: place } = await supabaseServer
-      .from("places")
-      .select("id")
-      .eq("id", data.placeId)
-      .single();
+    const [place] = await sql`select id from places where id = ${data.placeId}`;
     if (!place) {
       return NextResponse.json({ error: "Place not found" }, { status: 404 });
     }
-    placeId = place.id;
+    placeId = (place as { id: string }).id;
   } else {
     const lat = data.lat!;
     const lng = data.lng!;
     const name = data.name!;
-    const { data: newId, error: insertErr } = await supabaseServer.rpc(
-      "insert_place",
-      {
-        p_name: name,
-        p_address: data.address ?? null,
-        p_lat: lat,
-        p_lng: lng,
-        p_google_place_id: data.google_place_id ?? null,
-      }
-    );
-    if (insertErr || !newId) {
+    const [row] = await sql`
+      select insert_place(${name}, ${data.address ?? null}, ${lat}, ${lng}, ${data.google_place_id ?? null}) as id
+    `;
+    const newId = row?.id as string | undefined;
+    if (!newId) {
       return NextResponse.json(
-        { error: insertErr?.message ?? "Failed to create place" },
+        { error: "Failed to create place" },
         { status: 500 }
       );
     }
-    placeId = newId as string;
+    placeId = newId;
   }
 
-  const { data: report, error: reportErr } = await supabaseServer
-    .from("reports")
-    .insert({
-      place_id: placeId,
-      cleanliness: data.cleanliness,
-      privacy: data.privacy,
-      safety: data.safety,
-      has_lock: data.has_lock,
-      has_tp: data.has_tp,
-      access: data.access,
-      notes: data.notes ?? null,
-      device_hash: deviceHash,
-      ai_status: "pending",
-      ai_flags: {},
-    })
-    .select("id")
-    .single();
-  if (reportErr) {
-    return NextResponse.json({ error: reportErr.message }, { status: 500 });
+  const [reportRow] = await sql`
+    insert into reports (place_id, cleanliness, privacy, safety, has_lock, has_tp, access, notes, device_hash, ai_status, ai_flags)
+    values (${placeId}, ${data.cleanliness}, ${data.privacy}, ${data.safety}, ${data.has_lock}, ${data.has_tp}, ${data.access}, ${data.notes ?? null}, ${deviceHash}, 'pending', '{}'::jsonb)
+    returning id
+  `;
+  const reportId = (reportRow as { id: string } | undefined)?.id;
+  if (!reportId) {
+    return NextResponse.json({ error: "Failed to insert report" }, { status: 500 });
   }
 
-  await supabaseServer.from("jobs").insert({
-    report_id: report.id,
-    status: "pending",
-  });
+  await sql`
+    insert into jobs (report_id, status) values (${reportId}, 'pending')
+  `;
 
-  return NextResponse.json({ success: true, reportId: report.id }, { status: 201 });
+  return NextResponse.json({ success: true, reportId }, { status: 201 });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { moderateNotes, computeAiQuality } from "@/lib/moderation";
 import {
   computeTrustScore,
@@ -18,72 +18,50 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: jobs, error: jobsErr } = await supabaseServer
-    .from("jobs")
-    .select("id, report_id")
-    .eq("status", "pending")
-    .order("created_at", { ascending: true })
-    .limit(BATCH_SIZE);
-  if (jobsErr || !jobs?.length) {
+  const jobs = await sql`
+    select id, report_id from jobs
+    where status = 'pending'
+    order by created_at asc limit ${BATCH_SIZE}
+  `;
+  if (!jobs?.length) {
     return NextResponse.json({ processed: 0 });
   }
 
   let processed = 0;
-  for (const job of jobs) {
-    await supabaseServer
-      .from("jobs")
-      .update({ status: "processing", updated_at: new Date().toISOString() })
-      .eq("id", job.id);
+  for (const job of jobs as { id: string; report_id: string }[]) {
+    await sql`update jobs set status = 'processing', updated_at = now() where id = ${job.id}`;
 
-    const { data: report, error: reportErr } = await supabaseServer
-      .from("reports")
-      .select("*")
-      .eq("id", job.report_id)
-      .single();
-    if (reportErr || !report) {
-      await supabaseServer
-        .from("jobs")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
-        .eq("id", job.id);
+    const [reportRow] = await sql`select * from reports where id = ${job.report_id}`;
+    if (!reportRow) {
+      await sql`update jobs set status = 'failed', updated_at = now() where id = ${job.id}`;
       continue;
     }
+    const report = reportRow as Record<string, unknown>;
 
-    const status = moderateNotes(report.notes);
-    const ai_quality = computeAiQuality(report.notes);
-    await supabaseServer
-      .from("reports")
-      .update({
-        ai_status: status,
-        ai_quality,
-        ai_flags: report.ai_flags ?? {},
-      })
-      .eq("id", report.id);
+    const status = moderateNotes(report.notes as string | null);
+    const ai_quality = computeAiQuality(report.notes as string | null);
+    await sql`
+      update reports set ai_status = ${status}, ai_quality = ${ai_quality}
+      where id = ${job.report_id}
+    `;
 
     const placeId = report.place_id as string;
-    const { data: approvedReports } = await supabaseServer
-      .from("reports")
-      .select("cleanliness, privacy, safety, has_lock, has_tp, created_at")
-      .eq("place_id", placeId)
-      .eq("ai_status", "approved")
-      .order("created_at", { ascending: false })
-      .limit(20);
+    const approvedReports = await sql`
+      select cleanliness, privacy, safety, has_lock, has_tp, created_at from reports
+      where place_id = ${placeId} and ai_status = 'approved'
+      order by created_at desc limit 20
+    `;
     const list = (approvedReports ?? []) as ReportForScore[];
     const trust_score = computeTrustScore(list);
     const summary = buildSummary(list);
-    await supabaseServer.from("place_scores").upsert(
-      {
-        place_id: placeId,
-        trust_score,
-        summary,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "place_id" }
-    );
 
-    await supabaseServer
-      .from("jobs")
-      .update({ status: "done", updated_at: new Date().toISOString() })
-      .eq("id", job.id);
+    await sql`
+      insert into place_scores (place_id, trust_score, summary, updated_at)
+      values (${placeId}, ${trust_score}, ${summary}, now())
+      on conflict (place_id) do update set trust_score = ${trust_score}, summary = ${summary}, updated_at = now()
+    `;
+
+    await sql`update jobs set status = 'done', updated_at = now() where id = ${job.id}`;
     processed++;
   }
   return NextResponse.json({ processed });

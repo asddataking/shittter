@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { nearbyQuerySchema } from "@/lib/schemas";
 import type { PlaceWithScore } from "@/lib/types";
 
@@ -21,16 +21,10 @@ export async function GET(request: NextRequest) {
   }
   const { lat, lng, radius, minScore, hasLock, hasTp } = parsed.data;
 
-  const { data: rows, error } = await supabaseServer.rpc("get_places_nearby", {
-    p_lat: lat,
-    p_lng: lng,
-    p_radius_m: radius,
-    p_min_score: minScore ?? null,
-  });
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  let results: PlaceWithScore[] = (rows ?? []).map((r: Record<string, unknown>) => ({
+  const rows = await sql`
+    select * from get_places_nearby(${lat}, ${lng}, ${radius}, ${minScore ?? null})
+  `;
+  let results: PlaceWithScore[] = (rows as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     name: r.name as string,
     address: r.address as string | null,
@@ -45,16 +39,19 @@ export async function GET(request: NextRequest) {
   }));
 
   const placeIds = results.map((p) => p.id);
-  const { data: reportAgg } = await supabaseServer
-    .from("reports")
-    .select("place_id, has_lock, has_tp")
-    .in("place_id", placeIds)
-    .eq("ai_status", "approved");
+  if (placeIds.length === 0) {
+    return NextResponse.json(results);
+  }
+
+  const reportAgg = await sql`
+    select place_id, has_lock, has_tp from reports
+    where place_id = any(${placeIds}) and ai_status = 'approved'
+  `;
   const byPlace = new Map<
     string,
     { lockYes: number; lockNo: number; tpYes: number; tpNo: number }
   >();
-  for (const r of reportAgg ?? []) {
+  for (const r of reportAgg as { place_id: string; has_lock: boolean; has_tp: boolean }[]) {
     const cur = byPlace.get(r.place_id) ?? {
       lockYes: 0,
       lockNo: 0,
