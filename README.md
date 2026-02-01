@@ -41,7 +41,8 @@ Copy `.env.example` to `.env.local` and set:
 - `NEON_AUTH_BASE_URL` — Auth URL from Neon Console (Auth → Configuration)
 - `NEON_AUTH_COOKIE_SECRET` — at least 32 characters (e.g. from `openssl rand -base64 32`)
 - `DEVICE_HASH_SALT` — any random string for hashing device identifiers
-- `ADMIN_SEED_SECRET` — secret for jobs/run (process pending reports)
+- `ADMIN_SEED_SECRET` — secret for manual `POST /api/jobs/run` (x-admin-secret)
+- `CRON_SECRET` — secret for Vercel Cron (set in Vercel; same value as `ADMIN_SEED_SECRET` recommended)
 
 Optional:
 
@@ -67,13 +68,13 @@ Reports are submitted with `ai_status: pending`. To run moderation and recompute
 curl -X POST http://localhost:3000/api/jobs/run -H "x-cron-secret: YOUR_ADMIN_SEED_SECRET"
 ```
 
-Run on a schedule (e.g. every 1–5 minutes) via Vercel Cron or an external cron.
+A Vercel Cron is configured in `vercel.json` to call `/api/jobs/run` every 5 minutes. Vercel sends `Authorization: Bearer CRON_SECRET`; set `CRON_SECRET` in your Vercel project env (same value as `ADMIN_SEED_SECRET` is fine).
 
 ## Deploy to Vercel
 
 1. Push to GitHub and import in Vercel.
-2. Set env vars: `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `DEVICE_HASH_SALT`, `ADMIN_SEED_SECRET`.
-3. Deploy. Optionally add a Vercel Cron for `POST /api/jobs/run`.
+2. Set env vars: `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `DEVICE_HASH_SALT`, `ADMIN_SEED_SECRET`, `CRON_SECRET` (same as `ADMIN_SEED_SECRET` for cron auth).
+3. Deploy. The cron in `vercel.json` will hit `/api/jobs/run` every 5 minutes.
 
 ## Routes
 

@@ -9,22 +9,24 @@ import {
 
 const BATCH_SIZE = 20;
 
-export async function POST(request: NextRequest) {
+function isAuthorized(request: NextRequest): boolean {
+  const bearer = request.headers.get("authorization");
+  if (bearer === `Bearer ${process.env.CRON_SECRET}`) return true;
   const secret =
     request.headers.get("x-cron-secret") ??
     request.headers.get("x-admin-secret") ??
     request.nextUrl.searchParams.get("secret");
-  if (secret !== process.env.ADMIN_SEED_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  return secret === process.env.ADMIN_SEED_SECRET;
+}
 
+async function processJobs() {
   const jobs = await sql`
     select id, report_id from jobs
     where status = 'pending'
     order by created_at asc limit ${BATCH_SIZE}
   `;
   if (!jobs?.length) {
-    return NextResponse.json({ processed: 0 });
+    return { processed: 0 };
   }
 
   let processed = 0;
@@ -64,5 +66,21 @@ export async function POST(request: NextRequest) {
     await sql`update jobs set status = 'done', updated_at = now() where id = ${job.id}`;
     processed++;
   }
-  return NextResponse.json({ processed });
+  return { processed };
+}
+
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const result = await processJobs();
+  return NextResponse.json(result);
+}
+
+export async function POST(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const result = await processJobs();
+  return NextResponse.json(result);
 }
