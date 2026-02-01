@@ -1,8 +1,7 @@
-import { createNeonAuth } from "@neondatabase/auth/next/server";
+import { createAuthServer, neonAuth } from "@neondatabase/auth/next/server";
 
-export const auth = createNeonAuth({
-  baseUrl: process.env.NEON_AUTH_BASE_URL!,
-  cookies: {
-    secret: process.env.NEON_AUTH_COOKIE_SECRET!,
-  },
-});
+// Server-side auth client for Server Components, Server Actions, Route Handlers
+export const authServer = createAuthServer();
+
+// Utility to get session in Server Components
+export { neonAuth };

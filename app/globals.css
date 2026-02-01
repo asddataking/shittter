@@ -1,4 +1,37 @@
-@import "@neondatabase/auth/ui/tailwind";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand: #4a90a4;
+    --color-brand-dark: #3a7a94;
+    --color-bg: #e8f4f8;
+    --color-card: #ffffff;
+    --color-gold: #d4a853;
+    --color-glorious: #2d7a4d;
+    --color-decent: #5a9bd4;
+    --color-courage: #c9a227;
+  }
+}
+
+@layer components {
+  .badge-glorious {
+    @apply bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded;
+  }
+  .badge-decent {
+    @apply bg-sky-500 text-white text-xs font-bold px-2 py-0.5 rounded;
+  }
+  .badge-courage {
+    @apply bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded;
+  }
+  .badge-risky {
+    @apply bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded;
+  }
+  .filter-pill {
+    @apply px-3 py-1.5 rounded-full border border-slate-300 bg-white text-sm text-slate-600 hover:border-sky-400 hover:text-sky-600 transition-colors cursor-pointer select-none;
+  }
+  .filter-pill-active {
+    @apply border-sky-500 bg-sky-50 text-sky-700;
+  }
+}

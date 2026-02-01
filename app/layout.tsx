@@ -15,11 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased min-h-screen bg-slate-50 text-slate-900">
+      <body className="antialiased min-h-screen text-slate-900">
         <NeonAuthUIProvider authClient={authClient} redirectTo="/account/settings" emailOTP>
-          <header className="flex items-center justify-end gap-4 border-b border-slate-200 bg-white px-4 py-2">
+          {/* Floating user button */}
+          <div className="fixed top-3 right-3 z-50">
             <UserButton size="icon" />
-          </header>
+          </div>
           {children}
         </NeonAuthUIProvider>
       </body>

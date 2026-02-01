@@ -43,10 +43,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(results);
   }
 
-  const reportAgg = await sql`
-    select place_id, has_lock, has_tp from reports
-    where place_id = any(${placeIds}) and ai_status = 'approved'
-  `;
+  const [reportAgg, countRows] = await Promise.all([
+    sql`
+      select place_id, has_lock, has_tp from reports
+      where place_id = any(${placeIds}) and ai_status = 'approved'
+    `,
+    sql`
+      select place_id, count(*)::int as report_count from reports
+      where place_id = any(${placeIds}) and ai_status = 'approved'
+      group by place_id
+    `,
+  ]);
+  const reportCountByPlace = new Map<string, number>();
+  for (const row of countRows as { place_id: string; report_count: number }[]) {
+    reportCountByPlace.set(row.place_id, row.report_count);
+  }
   const byPlace = new Map<
     string,
     { lockYes: number; lockNo: number; tpYes: number; tpNo: number }
@@ -84,10 +95,12 @@ export async function GET(request: NextRequest) {
     const lockMajority =
       total > 0 && agg ? agg.lockYes > total / 2 : undefined;
     const tpMajority = total > 0 && agg ? agg.tpYes > total / 2 : undefined;
+    const report_count = reportCountByPlace.get(p.id) ?? 0;
     return {
       ...p,
       has_lock_majority: lockMajority,
       has_tp_majority: tpMajority,
+      report_count,
     };
   });
 

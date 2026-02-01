@@ -47,6 +47,7 @@ export interface PlaceWithScore extends Place {
   distance_m: number;
   has_lock_majority?: boolean;
   has_tp_majority?: boolean;
+  report_count?: number;
 }
 
 export interface PlaceDetailResponse {
@@ -55,10 +56,27 @@ export interface PlaceDetailResponse {
   reports: Report[];
 }
 
-export type TrustLabel = "Reliable" | "Mixed" | "Risky";
+export type TrustLabel = "Glorious" | "Decent" | "Courage Required" | "Risky";
 
 export function getTrustLabel(score: number): TrustLabel {
-  if (score >= 70) return "Reliable";
-  if (score >= 40) return "Mixed";
+  if (score >= 80) return "Glorious";
+  if (score >= 60) return "Decent";
+  if (score >= 40) return "Courage Required";
   return "Risky";
+}
+
+export function getTrustBadgeClass(score: number): string {
+  if (score >= 80) return "badge-glorious";
+  if (score >= 60) return "badge-decent";
+  if (score >= 40) return "badge-courage";
+  return "badge-risky";
+}
+
+export type MoodType = "glorious" | "decent" | "meh" | "sick";
+
+export function getMoodFromScore(score: number): MoodType {
+  if (score >= 80) return "glorious";
+  if (score >= 60) return "decent";
+  if (score >= 40) return "meh";
+  return "sick";
 }

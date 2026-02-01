@@ -9,10 +9,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
-    "@neondatabase/auth": "^0.1.0",
+    "@better-auth/core": "^1.4.6",
+    "@neondatabase/auth": "0.1.0-beta.21",
     "@neondatabase/serverless": "^0.10.0",
     "leaflet": "^1.9.4",
     "next": "14.2.18",

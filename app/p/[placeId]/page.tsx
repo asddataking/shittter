@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TrustScoreBadge } from "@/components/TrustScoreBadge";
 import { PlaceDetailSignals } from "@/components/PlaceDetailSignals";
+import { MoodEmoji } from "@/components/MoodEmoji";
 import { sql } from "@/lib/db";
 import type { PlaceDetailResponse } from "@/lib/types";
+import { getMoodFromScore, getTrustLabel } from "@/lib/types";
 
 async function getPlace(id: string): Promise<PlaceDetailResponse | null> {
   const [placeRow] = await sql`select * from places where id = ${id}`;
@@ -20,6 +22,23 @@ async function getPlace(id: string): Promise<PlaceDetailResponse | null> {
   };
 }
 
+function StarRating({ value, max = 5 }: { value: number; max?: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {Array.from({ length: max }).map((_, i) => (
+        <svg
+          key={i}
+          className={`w-5 h-5 ${i < value ? "text-amber-400" : "text-slate-200"}`}
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 export default async function PlaceDetailPage({
   params,
 }: {
@@ -32,58 +51,131 @@ export default async function PlaceDetailPage({
   const { place, score, reports } = data;
   const trustScore = score?.trust_score ?? 50;
   const summary = score?.summary ?? "No reports yet. Be the first to help the next person.";
+  const mood = getMoodFromScore(trustScore);
+  const label = getTrustLabel(trustScore);
+
+  // Calculate averages from reports
+  const avgCleanliness = reports.length > 0
+    ? Math.round(reports.reduce((sum, r) => sum + r.cleanliness, 0) / reports.length)
+    : 3;
+  const avgPrivacy = reports.length > 0
+    ? Math.round(reports.reduce((sum, r) => sum + r.privacy, 0) / reports.length)
+    : 3;
+  const avgSafety = reports.length > 0
+    ? Math.round(reports.reduce((sum, r) => sum + r.safety, 0) / reports.length)
+    : 3;
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-4 py-4">
-        <Link href="/" className="text-sm text-teal-600 hover:underline">
-          Back to map
+    <main className="min-h-screen bg-gradient-to-b from-sky-100 via-sky-50 to-slate-100">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-4 py-4">
+        <Link href="/" className="inline-flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to search
         </Link>
-        <h1 className="mt-2 text-xl font-semibold text-slate-900">{place.name}</h1>
-        {place.address && (
-          <p className="text-sm text-slate-500">{place.address}</p>
-        )}
+        <div className="mt-3 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">{place.name}</h1>
+            {place.address && (
+              <p className="text-sm text-slate-500 mt-1">{place.address}</p>
+            )}
+          </div>
+          <MoodEmoji mood={mood} size="lg" />
+        </div>
       </header>
 
-      <div className="p-4">
-        <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-sm font-medium text-slate-600">TrustScore</p>
-          <div className="mt-2 flex items-center gap-3">
-            <span className="text-4xl font-bold text-slate-900">{trustScore}</span>
-            <TrustScoreBadge score={trustScore} showNumber={false} />
+      <div className="p-4 max-w-lg mx-auto">
+        {/* Score Card */}
+        <section className="mb-6 rounded-xl bg-white shadow-sm border border-slate-200 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500 mb-1">Overall Rating</p>
+              <div className="flex items-center gap-3">
+                <span className="text-5xl font-bold text-slate-800">{trustScore}</span>
+                <TrustScoreBadge score={trustScore} variant="badge" />
+              </div>
+              <p className="text-sm text-slate-500 mt-2">{reports.length} ratings</p>
+            </div>
+            {trustScore >= 80 && (
+              <div className="text-center">
+                <span className="text-3xl">👑</span>
+                <p className="text-xs font-medium text-amber-600 mt-1">Verified King</p>
+              </div>
+            )}
           </div>
         </section>
 
+        {/* Ratings Breakdown */}
+        <section className="mb-6 rounded-xl bg-white shadow-sm border border-slate-200 p-5">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Ratings</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600 w-24">Cleanliness</span>
+              <StarRating value={avgCleanliness} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600 w-24">Privacy</span>
+              <StarRating value={avgPrivacy} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600 w-24">Safety</span>
+              <StarRating value={avgSafety} />
+            </div>
+          </div>
+        </section>
+
+        {/* Signals */}
         <section className="mb-6">
-          <h2 className="mb-2 text-lg font-medium text-slate-800">Signals</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-3">Amenities</h2>
           <PlaceDetailSignals reports={reports} />
         </section>
 
-        <section className="mb-6">
-          <h2 className="mb-2 text-lg font-medium text-slate-800">What to know</h2>
-          <p className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
-            {summary}
-          </p>
+        {/* Summary */}
+        <section className="mb-6 rounded-xl bg-white shadow-sm border border-slate-200 p-5">
+          <h2 className="text-lg font-semibold text-slate-800 mb-2">What to know</h2>
+          <p className="text-slate-600">{summary}</p>
         </section>
 
+        {/* Recent Reports */}
         <section className="mb-6">
-          <h2 className="mb-2 text-lg font-medium text-slate-800">Recent reports</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-3">Recent reports</h2>
           {reports.length === 0 ? (
-            <p className="text-sm text-slate-500">No reports yet.</p>
+            <div className="rounded-xl bg-white border border-slate-200 p-6 text-center">
+              <p className="text-slate-500">No reports yet. Be the first!</p>
+            </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {reports.map((r) => (
                 <li
                   key={r.id}
-                  className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+                  className="rounded-xl bg-white border border-slate-200 p-4"
                 >
-                  <span className="text-slate-600">
-                    Clean {r.cleanliness} · Priv {r.privacy} · Safe {r.safety}
-                    {r.has_lock && " · Lock"}
-                    {r.has_tp && " · TP"}
-                  </span>
+                  <div className="flex items-center gap-3 text-sm text-slate-600 mb-2">
+                    <span className="flex items-center gap-1">
+                      🧹 {r.cleanliness}/5
+                    </span>
+                    <span className="flex items-center gap-1">
+                      🔒 {r.privacy}/5
+                    </span>
+                    <span className="flex items-center gap-1">
+                      🛡️ {r.safety}/5
+                    </span>
+                  </div>
+                  <div className="flex gap-2 mb-2">
+                    {r.has_lock && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Has Lock</span>
+                    )}
+                    {r.has_tp && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Has TP</span>
+                    )}
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">
+                      {r.access.replace("_", " ")}
+                    </span>
+                  </div>
                   {r.notes && (
-                    <p className="mt-1 text-slate-700">&ldquo;{r.notes}&rdquo;</p>
+                    <p className="text-slate-700 italic">&ldquo;{r.notes}&rdquo;</p>
                   )}
                 </li>
               ))}
@@ -91,11 +183,12 @@ export default async function PlaceDetailPage({
           )}
         </section>
 
+        {/* CTA */}
         <Link
           href={`/p/${placeId}/report`}
-          className="block rounded bg-teal-600 px-4 py-3 text-center font-medium text-white hover:bg-teal-700"
+          className="block w-full py-4 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-semibold rounded-xl text-center shadow-md hover:from-sky-600 hover:to-sky-700 transition-all"
         >
-          Add a report
+          Add a report →
         </Link>
       </div>
     </main>

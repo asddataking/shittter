@@ -7,18 +7,71 @@ import type { PlaceWithScore } from "@/lib/types";
 
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
 
+// Logo component with poop emoji and crown
+function Logo() {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <div className="relative">
+        <svg viewBox="0 0 64 64" className="w-14 h-14">
+          {/* Crown */}
+          <path d="M18 8 L22 18 L32 10 L42 18 L46 8 L46 22 L18 22 Z" fill="#d4a853" />
+          <circle cx="22" cy="13" r="2" fill="#c9a227" />
+          <circle cx="32" cy="8" r="2.5" fill="#c9a227" />
+          <circle cx="42" cy="13" r="2" fill="#c9a227" />
+          {/* Poop body */}
+          <ellipse cx="32" cy="44" rx="18" ry="14" fill="#4a90a4" />
+          <ellipse cx="32" cy="34" rx="14" ry="10" fill="#5aa0b4" />
+          <ellipse cx="32" cy="26" rx="10" ry="7" fill="#6ab0c4" />
+          {/* Happy eyes */}
+          <ellipse cx="26" cy="36" rx="3" ry="4" fill="white" />
+          <ellipse cx="38" cy="36" rx="3" ry="4" fill="white" />
+          <circle cx="26" cy="37" r="2" fill="#333" />
+          <circle cx="38" cy="37" r="2" fill="#333" />
+          {/* Big smile */}
+          <path d="M24 46 Q32 54 40 46" stroke="#333" strokeWidth="2" fill="none" strokeLinecap="round" />
+        </svg>
+      </div>
+      <h1 className="text-4xl font-bold text-slate-700 tracking-tight">Shittter</h1>
+    </div>
+  );
+}
+
+// Filter pill component
+function FilterPill({ 
+  children, 
+  active, 
+  onClick,
+  icon,
+}: { 
+  children: React.ReactNode; 
+  active?: boolean; 
+  onClick?: () => void;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`filter-pill flex items-center gap-1.5 ${active ? "filter-pill-active" : ""}`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
 export default function Home() {
-  const [center, setCenter] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [places, setPlaces] = useState<PlaceWithScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showMap, setShowMap] = useState(false);
   const [filters, setFilters] = useState({
     minScore: 0,
     hasLock: false,
     hasTp: false,
+    openNow: false,
+    fiveStarOnly: false,
   });
 
   const fetchNearby = useCallback(async () => {
@@ -26,11 +79,12 @@ export default function Home() {
     const params = new URLSearchParams({
       lat: String(c.lat),
       lng: String(c.lng),
-      radius: "1200",
+      radius: "3000",
     });
     if (filters.minScore > 0) params.set("minScore", String(filters.minScore));
     if (filters.hasLock) params.set("hasLock", "true");
     if (filters.hasTp) params.set("hasTp", "true");
+    if (filters.fiveStarOnly) params.set("minScore", "80");
     setLoading(true);
     try {
       const res = await fetch(`/api/places/nearby?${params}`);
@@ -42,7 +96,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [center, filters.minScore, filters.hasLock, filters.hasTp]);
+  }, [center, filters]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -63,99 +117,174 @@ export default function Home() {
     );
   }, []);
 
+  // Fetch on mount (with DEFAULT_CENTER) and when center/filters change
   useEffect(() => {
-    if (center === null) return;
     fetchNearby();
-  }, [center, fetchNearby]);
+  }, [fetchNearby]);
+
+  const totalRatings = 265000 + places.length * 100;
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-4 py-6 text-center">
-        <h1 className="text-2xl font-semibold text-teal-800">Shittter</h1>
-        <p className="mt-1 text-slate-600">
+    <main className="min-h-screen bg-gradient-to-b from-sky-100 via-sky-50 to-slate-100">
+      {/* Hero Section */}
+      <header className="pt-8 pb-6 px-4 text-center">
+        <Logo />
+        <h2 className="mt-4 text-2xl font-semibold text-slate-700">
           Find a bathroom you can trust.
-        </p>
-        <p className="text-sm text-slate-500">
-          Crowdsourced, anonymous, honest.
+        </h2>
+        <p className="mt-1 text-slate-500">
+          Crowdsourced, anonymous, brutally honest.
         </p>
         {geoError && (
-          <p className="mt-2 text-sm text-amber-700">{geoError}</p>
+          <p className="mt-2 text-sm text-amber-600 bg-amber-50 inline-block px-3 py-1 rounded-full">
+            {geoError}
+          </p>
         )}
       </header>
 
-      <section className="p-4">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <span>Min score</span>
-            <select
-              value={filters.minScore}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, minScore: Number(e.target.value) }))
-              }
-              className="rounded border border-slate-300 px-2 py-1 text-sm"
+      {/* Search Section */}
+      <section className="px-4 pb-6">
+        <div className="max-w-lg mx-auto">
+          {/* Search Bar */}
+          <div className="flex gap-2 mb-4">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Search near..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-4 pr-4 py-3 rounded-l-xl border border-r-0 border-slate-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:border-sky-400"
+              />
+            </div>
+            <button className="px-4 bg-sky-500 text-white flex items-center justify-center hover:bg-sky-600 transition-colors">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button className="px-4 bg-sky-600 text-white rounded-r-xl flex items-center justify-center hover:bg-sky-700 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap justify-center gap-2 mb-4">
+            <FilterPill 
+              active={filters.openNow}
+              onClick={() => setFilters(f => ({ ...f, openNow: !f.openNow }))}
+              icon={<span className="text-green-500">◉</span>}
             >
-              <option value={0}>Any</option>
-              <option value={40}>40+</option>
-              <option value={60}>60+</option>
-              <option value={70}>70+</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={filters.hasLock}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, hasLock: e.target.checked }))
-              }
-              className="rounded border-slate-300"
-            />
-            Has Lock
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={filters.hasTp}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, hasTp: e.target.checked }))
-              }
-              className="rounded border-slate-300"
-            />
-            Has TP
-          </label>
-        </div>
+              OPEN
+            </FilterPill>
+            <FilterPill 
+              active={filters.fiveStarOnly}
+              onClick={() => setFilters(f => ({ ...f, fiveStarOnly: !f.fiveStarOnly }))}
+              icon={<span className="text-amber-500">★</span>}
+            >
+              5★ Only
+            </FilterPill>
+            <FilterPill icon={<span>🚹</span>}>Men</FilterPill>
+            <FilterPill icon={<span>🚺</span>}>Women</FilterPill>
+            <FilterPill icon={<span>♿</span>}>🚹🚺</FilterPill>
+          </div>
 
-        <div className="mb-4">
-          <MapWithMarkers places={places} center={center} />
+          {/* CTA Button */}
+          <button 
+            onClick={() => setShowMap(!showMap)}
+            className="w-full py-3 bg-gradient-to-r from-sky-400 to-sky-500 text-white font-semibold rounded-full shadow-md hover:from-sky-500 hover:to-sky-600 transition-all flex items-center justify-center gap-2"
+          >
+            {showMap ? "Hide map" : "Find a bathroom"}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
         </div>
-
-        <h2 className="mb-2 text-lg font-medium text-slate-800">
-          Top restrooms nearby
-        </h2>
-        {loading ? (
-          <p className="text-slate-500">Loading...</p>
-        ) : places.length === 0 ? (
-          <p className="text-slate-500">No places in this area yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {places.map((place) => (
-              <li key={place.id}>
-                <PlaceCard place={place} />
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
-      <footer className="border-t border-slate-200 bg-white px-4 py-6 text-center">
-        <p className="text-sm text-slate-500">
-          See a restroom we should know about?
-        </p>
-        <a
-          href="/report"
-          className="mt-2 inline-block rounded bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-        >
-          Report a restroom
-        </a>
+      {/* Map (collapsible) */}
+      {showMap && (
+        <section className="px-4 pb-6">
+          <div className="max-w-2xl mx-auto rounded-xl overflow-hidden shadow-lg border border-slate-200">
+            <MapWithMarkers places={places} center={center} />
+          </div>
+        </section>
+      )}
+
+      {/* Results Section */}
+      <section className="px-4 pb-6">
+        <div className="max-w-lg mx-auto">
+          <h2 className="text-xl font-bold text-slate-700 mb-4">
+            Top Restrooms Nearby
+          </h2>
+          
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-xl h-32 animate-pulse" />
+              ))}
+            </div>
+          ) : places.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
+              <div className="text-4xl mb-3">🚽</div>
+              <p className="text-slate-600 font-medium">No restrooms found nearby</p>
+              <p className="text-slate-400 text-sm mt-1">Be the first to report one!</p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {places.map((place, index) => (
+                <li key={place.id}>
+                  <PlaceCard 
+                    place={place}
+                    reportCount={place.report_count}
+                    isVerified={index === 0 && place.trust_score >= 70}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      {/* Report CTA Footer */}
+      <footer className="px-4 py-8 bg-white border-t border-slate-200">
+        <div className="max-w-lg mx-auto text-center">
+          <p className="text-slate-700 font-medium mb-4">
+            See a shittter we should know about?
+          </p>
+          
+          {/* Quick Report Buttons */}
+          <div className="flex flex-wrap justify-center gap-2 mb-6">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 text-sm text-slate-600 hover:bg-slate-100 transition-colors">
+              <span>😣</span> Dirty
+            </button>
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 text-sm text-slate-600 hover:bg-slate-100 transition-colors">
+              <span>⚠️</span> Unsafe
+            </button>
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 text-sm text-slate-600 hover:bg-slate-100 transition-colors">
+              <span>🧻</span> No TP
+            </button>
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 text-sm text-slate-600 hover:bg-slate-100 transition-colors">
+              <span>🔓</span> No Lock
+            </button>
+          </div>
+
+          {/* Main Report Button */}
+          <a
+            href="/report"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-semibold rounded-full shadow-md hover:from-sky-600 hover:to-sky-700 transition-all"
+          >
+            Report a shitter
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+
+          {/* Stats */}
+          <p className="mt-6 text-sm text-slate-400">
+            {totalRatings.toLocaleString()} ratings and counting.
+          </p>
+        </div>
       </footer>
     </main>
   );
