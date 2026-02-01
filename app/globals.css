@@ -15,7 +15,37 @@
   }
 }
 
+/* App shell: phone-width constraint, safe areas for iPhone notch/home indicator */
 @layer components {
+  .app-shell-body {
+    display: flex;
+    justify-content: center;
+  }
+  .app-shell {
+    max-width: 430px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  @media (min-width: 431px) {
+    .app-shell {
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    }
+  }
+  .app-shell-safe-top {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
+  .app-shell-safe-right {
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+  .app-shell-safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+  .app-shell-safe-left {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  }
+
   .badge-glorious {
     @apply bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded;
   }

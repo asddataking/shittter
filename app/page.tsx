@@ -97,14 +97,19 @@ export default function Home() {
         if (data.length === 0) setApiError("Showing sample places. Connect your database to see your seeded bathrooms.");
       } else {
         setPlaces(FALLBACK_PLACES);
-        const msg = res.status === 503 && data?.error
-          ? data.detail
+        let msg = "Could not load places. Showing sample list.";
+        if (res.status === 503 && data?.error) {
+          msg = data.detail
             ? `Database error: ${data.detail}`
-            : "Database not connected or migrations not run. Add DATABASE_URL in Vercel and run migrations."
-          : "Could not load places. Showing sample list.";
+            : "Database not connected or migrations not run. Add DATABASE_URL in Vercel and run migrations.";
+        } else if (data?.error && typeof data.error === "string") {
+          msg = `${res.status ? `Error ${res.status}: ` : ""}${data.error}`;
+        } else if (!res.ok) {
+          msg = `Error ${res.status}: Could not load places. Showing sample list.`;
+        }
         setApiError(msg);
       }
-    } catch {
+    } catch (err) {
       setPlaces(FALLBACK_PLACES);
       setApiError("Could not reach the server. Showing sample places.");
     } finally {

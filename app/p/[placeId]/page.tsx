@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { TrustScoreBadge } from "@/components/TrustScoreBadge";
 import { PlaceDetailSignals } from "@/components/PlaceDetailSignals";
 import { MoodEmoji } from "@/components/MoodEmoji";
@@ -8,6 +9,7 @@ import { sql } from "@/lib/db";
 import type { PlaceDetailResponse } from "@/lib/types";
 import { getMoodFromScore, getTrustLabel } from "@/lib/types";
 import { PLACEHOLDER_TOILET_IMAGE } from "@/lib/placeholders";
+import { getBaseUrl } from "@/lib/seo-utils";
 
 async function getPlace(id: string): Promise<PlaceDetailResponse | null> {
   const [placeRow] = await sql`select * from places where id = ${id}`;
@@ -37,6 +39,83 @@ async function getPlace(id: string): Promise<PlaceDetailResponse | null> {
     score: (scoreRow as PlaceDetailResponse["score"]) ?? null,
     reports,
   };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ placeId: string }>;
+}): Promise<Metadata> {
+  const { placeId } = await params;
+  const data = await getPlace(placeId);
+  if (!data) return { title: "Place not found" };
+  const { place, score, reports } = data;
+  const trustScore = score?.trust_score ?? 50;
+  const title = `Public Bathroom at ${place.name} – Shittter`;
+  const description =
+    `Community-reported bathroom info for ${place.name}. Cleanliness, privacy, and trust score (${trustScore}). ` +
+    (reports.length > 0
+      ? `${reports.length} report${reports.length === 1 ? "" : "s"}.`
+      : "Be the first to report.");
+  const baseUrl = getBaseUrl();
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${baseUrl}/p/${placeId}`,
+      type: "website",
+    },
+    twitter: { card: "summary", title, description },
+    alternates: { canonical: `${baseUrl}/p/${placeId}` },
+  };
+}
+
+function PlaceSchemaScript({
+  placeId,
+  place,
+  trustScore,
+  reportCount,
+}: {
+  placeId: string;
+  place: PlaceDetailResponse["place"];
+  trustScore: number;
+  reportCount: number;
+}) {
+  const baseUrl = getBaseUrl();
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": ["LocalBusiness", "Place"],
+    "@id": `${baseUrl}/p/${placeId}`,
+    name: place.name,
+    description: `Community-reported public bathroom at ${place.name}. Trust score and recent reports on Shittter.`,
+    address: place.address
+      ? { "@type": "PostalAddress", streetAddress: place.address }
+      : undefined,
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: place.lat,
+      longitude: place.lng,
+    },
+    url: `${baseUrl}/p/${placeId}`,
+    ...(reportCount > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: trustScore,
+        bestRating: 100,
+        worstRating: 0,
+        ratingCount: reportCount,
+        name: "TrustScore",
+      },
+    }),
+  };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
 }
 
 function StarRating({ value, max = 5 }: { value: number; max?: number }) {
@@ -84,6 +163,12 @@ export default async function PlaceDetailPage({
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-100 via-sky-50 to-slate-100">
+      <PlaceSchemaScript
+        placeId={placeId}
+        place={place}
+        trustScore={trustScore}
+        reportCount={reports.length}
+      />
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-4 py-4">
         <Link href="/" className="inline-flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700">
