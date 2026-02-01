@@ -8,7 +8,7 @@ import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 
-const DEFAULT_CENTER: [number, number] = [37.7749, -122.4194];
+const DEFAULT_CENTER: [number, number] = [42.2808, -83.743];
 
 interface MapWithMarkersProps {
   places: PlaceWithScore[];

@@ -11,13 +11,14 @@ export async function GET(request: NextRequest) {
     );
   }
   const { searchParams } = new URL(request.url);
+  const get = (key: string) => searchParams.get(key) ?? undefined;
   const parsed = nearbyQuerySchema.safeParse({
-    lat: searchParams.get("lat"),
-    lng: searchParams.get("lng"),
-    radius: searchParams.get("radius"),
-    minScore: searchParams.get("minScore"),
-    hasLock: searchParams.get("hasLock"),
-    hasTp: searchParams.get("hasTp"),
+    lat: get("lat"),
+    lng: get("lng"),
+    radius: get("radius"),
+    minScore: get("minScore"),
+    hasLock: get("hasLock"),
+    hasTp: get("hasTp"),
   });
   if (!parsed.success) {
     return NextResponse.json(

@@ -24,6 +24,8 @@ In the Neon SQL Editor, run the SQL files in `neon/migrations/` in order:
 
 1. `00001_initial.sql` — tables (places, reports, place_scores, jobs)
 2. `00002_functions.sql` — `get_places_nearby`, `insert_place`
+3. `00003_report_photos.sql` — report_photos table, places.primary_photo_url
+4. `00004_seed_places.sql` — seed places (Ann Arbor, MI)
 
 ### 3. Enable Neon Auth
 
@@ -39,7 +41,7 @@ Copy `.env.example` to `.env.local` and set:
 - `NEON_AUTH_BASE_URL` — Auth URL from Neon Console (Auth → Configuration)
 - `NEON_AUTH_COOKIE_SECRET` — at least 32 characters (e.g. from `openssl rand -base64 32`)
 - `DEVICE_HASH_SALT` — any random string for hashing device identifiers
-- `ADMIN_SEED_SECRET` — secret for admin seed and jobs/run endpoints
+- `ADMIN_SEED_SECRET` — secret for jobs/run (process pending reports)
 
 Optional:
 
@@ -57,13 +59,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - **Sign in / Sign up**: `/auth/sign-in`, `/auth/sign-up`
 - **Account**: `/account/settings` (protected)
 
-### 6. Seed places (optional)
-
-```bash
-curl -X POST http://localhost:3000/api/admin/seed -H "x-admin-secret: YOUR_ADMIN_SEED_SECRET"
-```
-
-### 7. Process reports (jobs)
+### 6. Process reports (jobs)
 
 Reports are submitted with `ai_status: pending`. To run moderation and recompute TrustScores:
 
@@ -93,5 +89,4 @@ Run on a schedule (e.g. every 1–5 minutes) via Vercel Cron or an external cron
 - `GET /api/places/nearby?lat=&lng=&radius=1200&minScore=&hasLock=&hasTp=` — Places within radius
 - `GET /api/place/[id]` — Place + score + last 10 approved reports
 - `POST /api/report` — Submit report (body: placeId or name+lat+lng, plus report fields)
-- `POST /api/admin/seed` — Seed places (header: `x-admin-secret`)
 - `POST /api/jobs/run` — Process pending reports (header: `x-cron-secret` or `x-admin-secret`)

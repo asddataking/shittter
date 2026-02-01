@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { TrustScoreBadge } from "@/components/TrustScoreBadge";
 import { PlaceDetailSignals } from "@/components/PlaceDetailSignals";
@@ -135,6 +134,37 @@ function StarRating({ value, max = 5 }: { value: number; max?: number }) {
   );
 }
 
+function PlaceNotFound() {
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-sky-100 via-sky-50 to-slate-100">
+      <header className="bg-white border-b border-slate-200 px-4 py-4">
+        <Link href="/" className="inline-flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to search
+        </Link>
+      </header>
+      <div className="p-4 max-w-lg mx-auto text-center py-16">
+        <div className="text-5xl mb-4">🚽</div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-2">Place not found</h1>
+        <p className="text-slate-600 mb-6">
+          This location isn&apos;t in our database yet. Be the first to add a report so others can find it.
+        </p>
+        <Link
+          href="/report"
+          className="inline-flex items-center gap-2 py-3 px-6 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-semibold rounded-xl shadow-md hover:from-sky-600 hover:to-sky-700 transition-all"
+        >
+          Add a report
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </Link>
+      </div>
+    </main>
+  );
+}
+
 export default async function PlaceDetailPage({
   params,
 }: {
@@ -142,7 +172,7 @@ export default async function PlaceDetailPage({
 }) {
   const { placeId } = await params;
   const data = await getPlace(placeId);
-  if (!data) notFound();
+  if (!data) return <PlaceNotFound />;
 
   const { place, score, reports } = data;
   const trustScore = score?.trust_score ?? 50;

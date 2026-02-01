@@ -4,10 +4,9 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { MapWithMarkers } from "@/components/MapWithMarkers";
 import { PlaceCard } from "@/components/PlaceCard";
-import { FALLBACK_PLACES } from "@/lib/seed-data";
 import type { PlaceWithScore } from "@/lib/types";
 
-const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
+const DEFAULT_CENTER = { lat: 42.2808, lng: -83.743 };
 
 function Logo() {
   return (
@@ -81,25 +80,25 @@ export default function Home() {
       const res = await fetch(`/api/places/nearby?${params}`);
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        setPlaces(data.length > 0 ? data : FALLBACK_PLACES);
-        if (data.length === 0) setApiError("Showing sample places. Connect your database to see your seeded bathrooms.");
+        setPlaces(data);
+        if (data.length === 0) setApiError("No restrooms in this area yet. Be the first to report one.");
       } else {
-        setPlaces(FALLBACK_PLACES);
-        let msg = "Could not load places. Showing sample list.";
+        setPlaces([]);
+        let msg = "Could not load places.";
         if (res.status === 503 && data?.error) {
           msg = data.detail
             ? `Database error: ${data.detail}`
-            : "Database not connected or migrations not run. Add DATABASE_URL in Vercel and run migrations.";
+            : "Database not connected. Add DATABASE_URL and run migrations.";
         } else if (data?.error && typeof data.error === "string") {
           msg = `${res.status ? `Error ${res.status}: ` : ""}${data.error}`;
         } else if (!res.ok) {
-          msg = `Error ${res.status}: Could not load places. Showing sample list.`;
+          msg = `Error ${res.status}: Could not load places.`;
         }
         setApiError(msg);
       }
     } catch (err) {
-      setPlaces(FALLBACK_PLACES);
-      setApiError("Could not reach the server. Showing sample places.");
+      setPlaces([]);
+      setApiError("Could not reach the server.");
     } finally {
       setLoading(false);
     }

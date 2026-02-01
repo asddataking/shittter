@@ -46,11 +46,11 @@ export const nearbyQuerySchema = z.object({
   radius: z.coerce.number().min(100).max(50000).default(1200),
   minScore: z.coerce.number().min(0).max(100).optional(),
   hasLock: z
-    .string()
+    .union([z.string(), z.null()])
     .optional()
     .transform((v) => v === "true" || v === "1"),
   hasTp: z
-    .string()
+    .union([z.string(), z.null()])
     .optional()
     .transform((v) => v === "true" || v === "1"),
 });

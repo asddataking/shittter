@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ReportForm, type ReportFormData } from "@/components/ReportForm";
 
-const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
+const DEFAULT_CENTER = { lat: 42.2808, lng: -83.743 };
 
 export default function NewPlaceReportPage() {
   const [name, setName] = useState("");

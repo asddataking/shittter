@@ -4,11 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { MapWithMarkers } from "@/components/MapWithMarkers";
 import { PlaceCard } from "@/components/PlaceCard";
-import { FALLBACK_PLACES } from "@/lib/seed-data";
 import type { PlaceWithScore } from "@/lib/types";
 
 const SITE_NAME = "Shittter";
-const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
+const DEFAULT_CENTER = { lat: 42.2808, lng: -83.743 };
 
 export function NearMeContent() {
   const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
@@ -27,12 +26,12 @@ export function NearMeContent() {
       const res = await fetch(`/api/places/nearby?${params}`);
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        setPlaces(data.length > 0 ? data : FALLBACK_PLACES);
+        setPlaces(data);
       } else {
-        setPlaces(FALLBACK_PLACES);
+        setPlaces([]);
       }
     } catch {
-      setPlaces(FALLBACK_PLACES);
+      setPlaces([]);
     } finally {
       setLoading(false);
     }
