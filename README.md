@@ -7,7 +7,7 @@ Find a bathroom you can trust. Crowdsourced, anonymous, honest.
 - Next.js 14+ (App Router), TypeScript
 - Tailwind CSS
 - Supabase (Postgres + PostGIS)
-- Google Maps JavaScript API
+- Leaflet + OpenStreetMap (no API key)
 
 ## Setup
 
@@ -33,7 +33,7 @@ Copy `.env.example` to `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon/public key
 - `SUPABASE_SERVICE_ROLE_KEY` — service role key (keep secret)
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — Google Maps JavaScript API key
+- (No map API key — Leaflet uses OpenStreetMap tiles)
 - `DEVICE_HASH_SALT` — any random string for hashing device identifiers
 - `ADMIN_SEED_SECRET` — secret for admin seed and jobs/run endpoints
 

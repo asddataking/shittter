@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader } from "@googlemaps/js-api-loader";
 import Link from "next/link";
 import { TrustScoreBadge } from "./TrustScoreBadge";
 import type { PlaceWithScore } from "@/lib/types";
+import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 
-const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
+import "leaflet/dist/leaflet.css";
+
+const DEFAULT_CENTER: [number, number] = [37.7749, -122.4194];
 
 interface MapWithMarkersProps {
   places: PlaceWithScore[];
   center: { lat: number; lng: number } | null;
-  onMapReady?: (map: google.maps.Map) => void;
+  onMapReady?: (map: LeafletMap) => void;
 }
 
 export function MapWithMarkers({
@@ -20,61 +22,76 @@ export function MapWithMarkers({
   onMapReady,
 }: MapWithMarkersProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<PlaceWithScore | null>(
-    null
-  );
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markersRef = useRef<LeafletMarker[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceWithScore | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!key || !containerRef.current) return;
+    if (!containerRef.current) return;
 
-    const loader = new Loader({
-      apiKey: key,
-      version: "weekly",
+    let cancelled = false;
+    import("leaflet").then((L) => {
+      if (cancelled || !containerRef.current) return;
+
+      // Fix default marker icon in bundled apps (Next.js/webpack)
+      const DefaultIcon = L.default.icon({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        iconRetinaUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      });
+      L.default.Marker.prototype.options.icon = DefaultIcon;
+
+      const map = L.default.map(containerRef.current, {
+        center: DEFAULT_CENTER,
+        zoom: 14,
+        zoomControl: true,
+      });
+      L.default.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+      L.default.control.zoom({ position: "topright" }).addTo(map);
+      mapRef.current = map;
+      onMapReady?.(map);
+    }).catch((err) => {
+      if (!cancelled) setLoadError(String(err));
     });
 
-    loader
-      .load()
-      .then(() => {
-        const map = new google.maps.Map(containerRef.current!, {
-          center: center ?? DEFAULT_CENTER,
-          zoom: 14,
-          disableDefaultUI: false,
-          zoomControl: true,
-        });
-        mapRef.current = map;
-        onMapReady?.(map);
-      })
-      .catch((err) => setLoadError(String(err)));
+    return () => {
+      cancelled = true;
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
   }, [onMapReady]);
 
   useEffect(() => {
-    if (!mapRef.current || !center) return;
-    mapRef.current.setCenter(center);
+    const map = mapRef.current;
+    if (!map || !center) return;
+    map.setView([center.lat, center.lng], map.getZoom());
   }, [center]);
 
   useEffect(() => {
-    if (!mapRef.current || !window.google) return;
-    markersRef.current.forEach((m) => m.setMap(null));
+    const map = mapRef.current;
+    if (!map) return;
+
+    markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    const map = mapRef.current;
-    for (const place of places) {
-      const marker = new google.maps.Marker({
-        map,
-        position: { lat: place.lat, lng: place.lng },
-        title: place.name,
-      });
-      marker.addListener("click", () => setSelectedPlace(place));
-      markersRef.current.push(marker);
-    }
-    return () => {
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
-    };
+    import("leaflet").then((L) => {
+      for (const place of places) {
+        const marker = L.default
+          .marker([place.lat, place.lng], { title: place.name })
+          .addTo(map)
+          .on("click", () => setSelectedPlace(place));
+        markersRef.current.push(marker);
+      }
+    });
   }, [places]);
 
   return (
@@ -82,7 +99,7 @@ export function MapWithMarkers({
       <div ref={containerRef} className="h-full w-full" />
       {loadError && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-100 p-4 text-center text-sm text-slate-600">
-          Map could not load. Check your API key.
+          Map could not load.
         </div>
       )}
       {selectedPlace && (
