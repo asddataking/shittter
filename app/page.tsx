@@ -284,6 +284,18 @@ export default function Home() {
           <p className="mt-6 text-sm text-slate-400">
             {totalRatings.toLocaleString()} ratings and counting.
           </p>
+
+          {/* Optional sign up CTA */}
+          <p className="mt-4 text-sm text-slate-500">
+            Want to save preferences?{" "}
+            <a href="/auth/sign-up" className="text-sky-600 hover:underline font-medium">
+              Sign up
+            </a>{" "}
+            ·{" "}
+            <a href="/auth/sign-in" className="text-sky-600 hover:underline font-medium">
+              Sign in
+            </a>
+          </p>
         </div>
       </footer>
     </main>
