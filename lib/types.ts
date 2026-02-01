@@ -1,0 +1,64 @@
+export interface Place {
+  id: string;
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  google_place_id: string | null;
+  source: "manual" | "google";
+  created_at: string;
+}
+
+export interface Report {
+  id: string;
+  place_id: string;
+  cleanliness: number;
+  privacy: number;
+  safety: number;
+  has_lock: boolean;
+  has_tp: boolean;
+  access: "public" | "customers_only" | "code_required" | "unknown";
+  notes: string | null;
+  device_hash: string;
+  ai_status: "pending" | "approved" | "rejected";
+  ai_flags: Record<string, unknown>;
+  ai_quality: number | null;
+  created_at: string;
+}
+
+export interface PlaceScore {
+  place_id: string;
+  trust_score: number;
+  summary: string | null;
+  updated_at: string;
+}
+
+export interface Job {
+  id: string;
+  report_id: string;
+  status: "pending" | "processing" | "done" | "failed";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlaceWithScore extends Place {
+  trust_score: number;
+  summary: string | null;
+  distance_m: number;
+  has_lock_majority?: boolean;
+  has_tp_majority?: boolean;
+}
+
+export interface PlaceDetailResponse {
+  place: Place;
+  score: PlaceScore | null;
+  reports: Report[];
+}
+
+export type TrustLabel = "Reliable" | "Mixed" | "Risky";
+
+export function getTrustLabel(score: number): TrustLabel {
+  if (score >= 70) return "Reliable";
+  if (score >= 40) return "Mixed";
+  return "Risky";
+}
