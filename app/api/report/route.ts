@@ -72,5 +72,12 @@ export async function POST(request: NextRequest) {
     insert into jobs (report_id, status) values (${reportId}, 'pending')
   `;
 
+  const photoUrls = data.photo_urls ?? [];
+  for (const url of photoUrls) {
+    await sql`
+      insert into report_photos (report_id, url) values (${reportId}, ${url})
+    `;
+  }
+
   return NextResponse.json({ success: true, reportId }, { status: 201 });
 }

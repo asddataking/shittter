@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { TrustScoreBadge } from "@/components/TrustScoreBadge";
 import { PlaceDetailSignals } from "@/components/PlaceDetailSignals";
@@ -6,19 +7,35 @@ import { MoodEmoji } from "@/components/MoodEmoji";
 import { sql } from "@/lib/db";
 import type { PlaceDetailResponse } from "@/lib/types";
 import { getMoodFromScore, getTrustLabel } from "@/lib/types";
+import { PLACEHOLDER_TOILET_IMAGE } from "@/lib/placeholders";
 
 async function getPlace(id: string): Promise<PlaceDetailResponse | null> {
   const [placeRow] = await sql`select * from places where id = ${id}`;
   if (!placeRow) return null;
   const [scoreRow] = await sql`select * from place_scores where place_id = ${id}`;
-  const reportsRows = await sql`
+  const reportsRows = (await sql`
     select * from reports where place_id = ${id} and ai_status = 'approved'
     order by created_at desc limit 10
-  `;
+  `) as PlaceDetailResponse["reports"];
+  const reportIds = reportsRows.map((r) => r.id);
+  let photosByReport: Record<string, string[]> = {};
+  if (reportIds.length > 0) {
+    const photoRows = (await sql`
+      select report_id, url from report_photos where report_id = any(${reportIds})
+    `) as { report_id: string; url: string }[];
+    for (const p of photoRows) {
+      if (!photosByReport[p.report_id]) photosByReport[p.report_id] = [];
+      photosByReport[p.report_id].push(p.url);
+    }
+  }
+  const reports: PlaceDetailResponse["reports"] = reportsRows.map((r) => ({
+    ...r,
+    photo_urls: photosByReport[r.id] ?? [],
+  }));
   return {
     place: placeRow as PlaceDetailResponse["place"],
     score: (scoreRow as PlaceDetailResponse["score"]) ?? null,
-    reports: (reportsRows ?? []) as PlaceDetailResponse["reports"],
+    reports,
   };
 }
 
@@ -87,6 +104,18 @@ export default async function PlaceDetailPage({
       </header>
 
       <div className="p-4 max-w-lg mx-auto">
+        {/* Place photo area - placeholder toilet image */}
+        <section className="mb-6 rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-slate-200 aspect-[4/3] relative">
+          <Image
+            src={PLACEHOLDER_TOILET_IMAGE}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="(max-width: 512px) 100vw, 512px"
+            unoptimized
+          />
+        </section>
+
         {/* Score Card */}
         <section className="mb-6 rounded-xl bg-white shadow-sm border border-slate-200 p-5">
           <div className="flex items-center justify-between">
@@ -152,6 +181,28 @@ export default async function PlaceDetailPage({
                   key={r.id}
                   className="rounded-xl bg-white border border-slate-200 p-4"
                 >
+                  {r.photo_urls && r.photo_urls.length > 0 && (
+                    <div className="flex gap-2 mb-3 overflow-x-auto">
+                      {r.photo_urls.map((url) => (
+                        <a
+                          key={url}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-slate-200"
+                        >
+                          <Image
+                            src={url}
+                            alt="Report photo"
+                            width={80}
+                            height={80}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 text-sm text-slate-600 mb-2">
                     <span className="flex items-center gap-1">
                       🧹 {r.cleanliness}/5

@@ -10,6 +10,7 @@ export interface ReportFormData {
   has_tp: boolean;
   access: "public" | "customers_only" | "code_required" | "unknown";
   notes: string;
+  photo_urls: string[];
 }
 
 const DEFAULT_FORM: ReportFormData = {
@@ -20,6 +21,7 @@ const DEFAULT_FORM: ReportFormData = {
   has_tp: false,
   access: "public",
   notes: "",
+  photo_urls: [],
 };
 
 interface ReportFormProps {
@@ -98,6 +100,44 @@ export function ReportForm({
   const [form, setForm] = useState<ReportFormData>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const MAX_PHOTOS = 5;
+  const ACCEPT = "image/jpeg,image/png,image/webp";
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    const current = form.photo_urls;
+    if (current.length >= MAX_PHOTOS) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < Math.min(files.length, MAX_PHOTOS - current.length); i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        const fd = new FormData();
+        fd.set("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error ?? "Upload failed");
+        }
+        const { url } = await res.json();
+        urls.push(url);
+      }
+      setForm((f) => ({ ...f, photo_urls: [...f.photo_urls, ...urls] }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const removePhoto = (url: string) => {
+    setForm((f) => ({ ...f, photo_urls: f.photo_urls.filter((u) => u !== url) }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +220,47 @@ export function ReportForm({
               <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Photos Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h3 className="text-sm font-semibold text-slate-700 mb-2">📷 Add photos (optional)</h3>
+        <p className="text-xs text-slate-500 mb-3">JPEG, PNG or WebP. Max 4 MB each. Up to {MAX_PHOTOS} photos.</p>
+        <div className="flex flex-wrap gap-2">
+          {form.photo_urls.map((url) => (
+            <div key={url} className="relative group">
+              <img src={url} alt="Upload" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+              <button
+                type="button"
+                onClick={() => removePhoto(url)}
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-90 hover:opacity-100"
+                aria-label="Remove photo"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {form.photo_urls.length < MAX_PHOTOS && (
+            <label className="w-20 h-20 flex items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-sky-400 hover:bg-sky-50/50 cursor-pointer">
+              <input
+                type="file"
+                accept={ACCEPT}
+                multiple
+                className="hidden"
+                disabled={uploading}
+                onChange={handleFileChange}
+              />
+              {uploading ? (
+                <svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <span className="text-2xl">+</span>
+              )}
+            </label>
+          )}
         </div>
       </div>
 

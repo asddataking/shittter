@@ -31,6 +31,7 @@ export const reportSubmitSchema = z
     has_tp: z.boolean(),
     access: accessSchema.default("public"),
     notes: z.string().max(240).optional().nullable(),
+    photo_urls: z.array(z.string().url()).max(5).optional().default([]),
   })
   .refine(
     (data) => data.placeId ?? (data.name != null && data.lat != null && data.lng != null),

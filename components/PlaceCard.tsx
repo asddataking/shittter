@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MoodEmoji } from "./MoodEmoji";
 import type { PlaceWithScore } from "@/lib/types";
 import { getTrustLabel, getTrustBadgeClass, getMoodFromScore } from "@/lib/types";
+import { PLACEHOLDER_TOILET_IMAGE } from "@/lib/placeholders";
 
 function formatDistance(m: number): string {
   if (m < 304.8) return `${Math.round(m * 3.28084)} ft`;
@@ -56,11 +58,16 @@ export function PlaceCard({
       className="block rounded-xl bg-white shadow-sm border border-slate-200 overflow-hidden transition hover:shadow-md hover:border-sky-200"
     >
       <div className="flex">
-        {/* Thumbnail */}
-        <div className="w-24 h-28 flex-shrink-0 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-          <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
+        {/* Thumbnail / placeholder toilet image */}
+        <div className="w-24 h-28 flex-shrink-0 bg-slate-200 relative overflow-hidden">
+          <Image
+            src={PLACEHOLDER_TOILET_IMAGE}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="96px"
+            unoptimized
+          />
         </div>
 
         {/* Content */}

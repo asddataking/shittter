@@ -48,6 +48,7 @@ export default function NewPlaceReportPage() {
         has_tp: data.has_tp,
         access: data.access,
         notes: data.notes || null,
+        photo_urls: data.photo_urls ?? [],
       }),
     });
     if (!res.ok) {

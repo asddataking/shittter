@@ -26,6 +26,11 @@ export interface Report {
   created_at: string;
 }
 
+/** Report with optional photo URLs (from report_photos). */
+export interface ReportWithPhotos extends Report {
+  photo_urls?: string[];
+}
+
 export interface PlaceScore {
   place_id: string;
   trust_score: number;
@@ -53,7 +58,7 @@ export interface PlaceWithScore extends Place {
 export interface PlaceDetailResponse {
   place: Place;
   score: PlaceScore | null;
-  reports: Report[];
+  reports: ReportWithPhotos[];
 }
 
 export type TrustLabel = "Glorious" | "Decent" | "Courage Required" | "Risky";
